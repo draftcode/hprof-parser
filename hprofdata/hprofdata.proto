@@ -1,0 +1,230 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package hprofdata;
+
+// Data type in the hprof format. Values are encoded in the big endian.
+enum HProfValueType {
+  UNKNOWN_HPROF_VALUE_TYPE = 0;
+  // Object. The value of this type is an object_id of HProfInstanceDump,
+  // array_object_id of HProfObjectArrayDump or HProfPrimitiveArrayDump,
+  // or class_object_id of HProfClassDump.
+  //
+  // The value is basically a pointer and its size is defined in the hprof
+  // header, which is typically 4 bytes for 32-bit JVM hprof dumps or 8 bytes
+  // for 64-bit JVM hprof dumps.
+  OBJECT = 0x02;
+  // Boolean. Takes 0 or 1. One byte.
+  BOOLEAN = 0x04;
+  // Character. Two bytes.
+  CHAR = 0x05;
+  // Float. 4 bytes
+  FLOAT = 0x06;
+  // Double. 8 bytes.
+  DOUBLE = 0x07;
+  // Byte. One byte.
+  BYTE = 0x08;
+  // Short. Two bytes.
+  SHORT = 0x09;
+  // Integer. 4 bytes.
+  INT = 0x0a;
+  // Long. 8 bytes.
+  LONG = 0x0b;
+}
+
+// UTF-8 byte sequence record.
+//
+// Even though it says UTF-8, its content might not be a valid UTF-8 sequence.
+message HProfRecordUTF8 {
+  // ID of the record.
+  uint64 name_id = 1;
+  // UTF-8 byte sequence.
+  bytes name = 2;
+}
+
+// Load class record.
+message HProfRecordLoadClass {
+  // Class serial number.
+  uint32 class_serial_number = 1;
+  // Class object ID, associated with HProfClassDump.
+  uint64 class_object_id = 2;
+  // Stack trace serial number. Mostly unused unless the class is dynamically
+  // created and loaded with a custom class loader?
+  uint32 stack_trace_serial_number = 3;
+  // Class name, associated with HProfRecordUTF8.
+  uint64 class_name_id = 4;
+}
+
+// Stack frame record.
+message HProfRecordFrame {
+  // Stack frame ID.
+  uint64 stack_frame_id = 1;
+  // Method name, associated with HProfRecordUTF8.
+  uint64 method_name_id = 2;
+  // Method signature, associated with HProfRecordUTF8.
+  uint64 method_signature_id = 3;
+  // Source file name, associated with HProfRecordUTF8.
+  uint64 source_file_name_id = 4;
+  // Class serial number, associated with HProfRecordLoadClass.
+  uint32 class_serial_number = 5;
+  // Line number if available.
+  int32 line_number = 6;
+}
+
+// Stack trace record.
+message HProfRecordTrace {
+  // Stack trace serial number.
+  uint32 stack_trace_serial_number = 1;
+  // Thread serial number.
+  uint32 thread_serial_number = 2;
+  // Stack frame IDs, associated with HProfRecordFrame.
+  repeated uint64 stack_frame_ids = 3;
+}
+
+// Start and end of heap dump sections.
+message HProfRecordHeapDumpBoundary {}
+
+// Class data dump.
+message HProfClassDump {
+  // Class object ID.
+  uint64 class_object_id = 1;
+  // Stack trace serial number.
+  uint32 stack_trace_serial_number = 2;
+  // Super class object ID, associated with another HProfClassDump.
+  uint64 super_class_object_id = 3;
+  // Class loader object ID, associated with HProfInstanceDump.
+  uint64 class_loader_object_id = 4;
+  // Signer of the class. (Looks like ClassLoaders can have signatures...)
+  uint64 signers_object_id = 5;
+  // Protection domain object ID. (No idea)
+  uint64 protection_domain_object_id = 6;
+  // Instance size.
+  uint32 instance_size = 7;
+
+  // Constant pool entry (appears to be unused according to heapDumper.cpp).
+  message ConstantPoolEntry {
+    HProfValueType type = 1;
+    uint64 value = 2;
+  }
+  repeated ConstantPoolEntry constant_pool_entries = 8;
+
+  // Static fields.
+  message StaticField {
+    // Static field name, associated with HProfRecordUTF8.
+    uint64 name_id = 1;
+    // Type of the static field.
+    HProfValueType type = 2;
+    // Value of the static field. Must be interpreted based on the type.
+    uint64 value = 3;
+  }
+  repeated StaticField static_fields = 9;
+
+  // Instance fields.
+  message InstanceField {
+    // Instance field name, associated with HProfRecordUTF8.
+    uint64 name_id = 1;
+    // Type of the instance field.
+    HProfValueType type = 2;
+  }
+  repeated InstanceField instance_fields = 10;
+}
+
+// Instance dump.
+message HProfInstanceDump {
+  // Object ID.
+  uint64 object_id = 1;
+  // Stack trace serial number.
+  uint32 stack_trace_serial_number = 2;
+  // Class object ID, associated with HProfClassDump.
+  uint64 class_object_id = 3;
+  // Instance field values.
+  //
+  // The instance field values are serialized in the order of the instance field
+  // definition of HProfClassDump. If the class has three int fields, this
+  // values starts from three 4-byte integers. Then, it continues to the super
+  // class's instance fields.
+  bytes values = 4;
+}
+
+// Object array dump.
+message HProfObjectArrayDump {
+  // Object ID.
+  uint64 array_object_id = 1;
+  // Stack trace serial number.
+  uint32 stack_trace_serial_number = 2;
+  // Class object ID of the array elements, associated with HProfClassDump.
+  uint64 array_class_object_id = 3;
+  // Element object IDs.
+  repeated uint64 element_object_ids = 4;
+}
+
+// Primitive array dump.
+message HProfPrimitiveArrayDump {
+  // Object ID.
+  uint64 array_object_id = 1;
+  // Stack trace serial number.
+  uint32 stack_trace_serial_number = 2;
+  // Type of the elements.
+  HProfValueType element_type = 3;
+  // Element values.
+  //
+  // Values need to be parsed based on the element_type. If the array is an int
+  // array with three elements, this field has 12 bytes.
+  bytes values = 4;
+}
+
+// Root object pointer of JNI globals.
+message HProfRootJNIGlobal {
+  // Object ID.
+  uint64 object_id = 1;
+  // JNI global ref ID. (No idea)
+  uint64 jni_global_ref_id = 2;
+}
+
+// Root object pointer of JNI locals.
+message HProfRootJNILocal {
+  // Object ID.
+  uint64 object_id = 1;
+  // Thread serial number.
+  uint32 thread_serial_number = 2;
+  // Frame number in the trace.
+  uint32 frame_number_in_stack_trace = 3;
+}
+
+// Root object pointer on JVM stack (e.g. local variables).
+message HProfRootJavaFrame {
+  // Object ID.
+  uint64 object_id = 1;
+  // Thread serial number.
+  uint32 thread_serial_number = 2;
+  // Frame number in the trace.
+  uint32 frame_number_in_stack_trace = 3;
+}
+
+// System classes (No idea).
+message HProfRootStickyClass {
+  // Object ID.
+  uint64 object_id = 1;
+}
+
+// Thread object.
+message HProfRootThreadObj {
+  // Object ID.
+  uint64 thread_object_id = 1;
+  // Thread sequence number. (It seems this is same as thread serial number.)
+  uint32 thread_sequence_number = 2;
+  // Stack trace serial number.
+  uint32 stack_trace_sequence_number = 3;
+}
