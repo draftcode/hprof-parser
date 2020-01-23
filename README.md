@@ -1,5 +1,7 @@
 # HProf file parser
 
+[![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/google/hprof-parser/parser)
+
 This is a Go library for parsing Java Virtual Machine heap dump files (.hprof).
 
 Not an official Google product (i.e. a 20% project).
