@@ -228,3 +228,9 @@ message HProfRootThreadObj {
   // Stack trace serial number.
   uint32 stack_trace_sequence_number = 3;
 }
+
+// Busy monitor.
+message HProfRootMonitorUsed {
+  // Object ID.
+  uint64 object_id = 1;
+}
