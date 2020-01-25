@@ -386,6 +386,15 @@ func (p *HProfParser) parseHeapDumpFrame() (interface{}, error) {
 			StackTraceSequenceNumber: stsn,
 		}, nil
 
+	case HProfHDRecordTypeRootMonitorUsed:
+		oid, err := p.readID()
+		if err != nil {
+			return nil, err
+		}
+		return &hprofdata.HProfRootMonitorUsed{
+			ObjectId: oid,
+		}, nil
+
 	case HProfHDRecordTypeClassDump:
 		coid, err := p.readID()
 		if err != nil {
