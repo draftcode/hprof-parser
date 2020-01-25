@@ -288,6 +288,10 @@ func (p *HProfParser) ParseRecord() (interface{}, error) {
 	case HProfRecordTypeHeapDumpEnd:
 		return &hprofdata.HProfRecordHeapDumpBoundary{}, nil
 	default:
+		_, err := p.readBytes(int(sz))
+		if err != nil {
+			return nil, err
+		}
 		return nil, fmt.Errorf("unknown record type: 0x%x", rt)
 	}
 }
