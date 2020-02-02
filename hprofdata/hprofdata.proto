@@ -115,6 +115,7 @@ message HProfClassDump {
 
   // Constant pool entry (appears to be unused according to heapDumper.cpp).
   message ConstantPoolEntry {
+    uint32 constant_pool_index = 3;
     HProfValueType type = 1;
     uint64 value = 2;
   }
