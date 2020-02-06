@@ -439,6 +439,10 @@ func (p *HProfParser) parseHeapDumpFrame() (interface{}, error) {
 		}
 		cps := []*hprofdata.HProfClassDump_ConstantPoolEntry{}
 		for i := uint16(0); i < cpsz; i++ {
+			cpix, err := p.readUint16()
+			if err != nil {
+				return nil, err
+			}
 			ty, err := p.readByte()
 			if err != nil {
 				return nil, err
@@ -448,6 +452,7 @@ func (p *HProfParser) parseHeapDumpFrame() (interface{}, error) {
 				return nil, err
 			}
 			cps = append(cps, &hprofdata.HProfClassDump_ConstantPoolEntry{
+				ConstantPoolIndex: uint32(cpix),
 				Type:  hprofdata.HProfValueType(ty),
 				Value: v,
 			})
